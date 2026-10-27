@@ -348,6 +348,62 @@ $("quickNote").onclick = (e) => {
   newNote();
 };
 
+// ---- Terminal ----
+
+// Facts about this computer, from the browser
+function specs() {
+  return [
+    ["Display", `${screen.width} x ${screen.height}`],
+    ["Processor", navigator.hardwareConcurrency + " cores"],
+    ["Memory", (navigator.deviceMemory || "?") + " GB"],
+    ["Language", navigator.language],
+    ["Time zone", Intl.DateTimeFormat().resolvedOptions().timeZone],
+  ];
+}
+
+const COMMANDS = {
+  help: () => "Try: " + Object.keys(COMMANDS).join(", "),
+  date: () => new Date().toString(),
+  whoami: () => "guest",
+  echo: (...words) => words.join(" "),
+  weather: () => `${CITY.name}: ${$("temp").textContent}, ${$("skyText").textContent}`,
+  neofetch: () => ["guest@macbook", "-------------"]
+    .concat(specs().map(([name, value]) => `${name}: ${value}`))
+    .join("\n"),
+  open: (id) => {
+    openApp(id);
+    return "Opening " + id + "...";
+  },
+};
+
+SETUP.terminal = function (win) {
+  const output = win.querySelector(".term-output");
+  const input = win.querySelector("input");
+
+  function print(text) {
+    const line = document.createElement("div");
+    line.textContent = text;
+    output.append(line);
+  }
+
+  print("Last login: " + new Date().toDateString() + " on ttys000");
+  print('Type "help" to see what I can do.');
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    const [name, ...args] = input.value.trim().split(/\s+/);
+    print("guest@macbook ~ % " + input.value);
+    input.value = "";
+    if (name === "clear") output.innerHTML = "";
+    else if (COMMANDS[name]) print(COMMANDS[name](...args));
+    else if (name) print("zsh: command not found: " + name);
+    win.querySelector(".content").scrollTop = 1e6;
+  });
+
+  win.addEventListener("click", () => input.focus());
+  setTimeout(() => input.focus());
+};
+
 // ---- Calculator ----
 
 // Work out a sum like "12*7+3". Only digits and + - * / . ( ) get this far.
@@ -410,65 +466,10 @@ SETUP.settings = function (win) {
 
 // ---- About This Mac ----
 
-function specs() {
-  return [
-    ["Display", `${screen.width} x ${screen.height}`],
-    ["Processor", navigator.hardwareConcurrency + " cores"],
-    ["Memory", (navigator.deviceMemory || "?") + " GB"],
-    ["Language", navigator.language],
-    ["Time zone", Intl.DateTimeFormat().resolvedOptions().timeZone],
-  ];
-}
-
 SETUP.about = function (win) {
   win.querySelector("dl").innerHTML = specs()
     .map(([name, value]) => `<dt>${name}</dt><dd>${value}</dd>`)
     .join("");
-};
-
-// ---- Terminal ----
-
-const COMMANDS = {
-  help: () => "Try: " + Object.keys(COMMANDS).join(", "),
-  date: () => new Date().toString(),
-  whoami: () => "guest",
-  echo: (...words) => words.join(" "),
-  weather: () => `${CITY.name}: ${$("temp").textContent}, ${$("skyText").textContent}`,
-  neofetch: () => ["guest@macbook", "-------------"]
-    .concat(specs().map(([name, value]) => `${name}: ${value}`))
-    .join("\n"),
-  open: (id) => {
-    openApp(id);
-    return "Opening " + id + "...";
-  },
-};
-
-SETUP.terminal = function (win) {
-  const output = win.querySelector(".term-output");
-  const input = win.querySelector("input");
-
-  function print(text) {
-    const line = document.createElement("div");
-    line.textContent = text;
-    output.append(line);
-  }
-
-  print("Last login: " + new Date().toDateString() + " on ttys000");
-  print('Type "help" to see what I can do.');
-
-  input.addEventListener("keydown", (e) => {
-    if (e.key !== "Enter") return;
-    const [name, ...args] = input.value.trim().split(/\s+/);
-    print("guest@macbook ~ % " + input.value);
-    input.value = "";
-    if (name === "clear") output.innerHTML = "";
-    else if (COMMANDS[name]) print(COMMANDS[name](...args));
-    else if (name) print("zsh: command not found: " + name);
-    win.querySelector(".content").scrollTop = 1e6;
-  });
-
-  win.addEventListener("click", () => input.focus());
-  setTimeout(() => input.focus());
 };
 
 // ---- Spotlight (Cmd+K) ----

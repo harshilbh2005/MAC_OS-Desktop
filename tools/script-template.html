@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>macOS Desktop Recording Script</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a teleprompter. One step fills the screen: big code on the left, what the
+   browser should show on the right, a slim progress header on top. Arrow keys move
+   between steps. Same look as the Lock Screen (video 1) and Donut & Cube (video 2)
+   scripts, so every script in the series feels the same.
+   Deliberately dark-only: it sits beside a dark recording setup in a dim room. */
+:root {
+  color-scheme: dark;
+  --ink: #0f0e13;
+  --panel: #17151d;
+  --raised: #201d28;
+  --line: #2e2a38;
+  --text: #ece8f2;
+  --muted: #a29bb0;
+  --faint: #6f6880;
+  --lamp: #ffb86b;
+  --lamp-ink: #2a1a08;
+  --dusk: #9d8dff;
+  --icing: #ff8cc3;
+  --term: #181818;
+  --ok: #8fe0b0;
+  --f-html: #ff9f7a;
+  --f-css: #8fc7ff;
+  --f-gl: #c9bcff;
+  --f-js: #ffd27a;
+  --sx-keyword: #ff9f7a;
+  --sx-string: #9ee6b7;
+  --sx-number: #ffd27a;
+  --sx-comment: #757087;
+  --sx-punct: #b4adc2;
+  --sx-fn: #ffcf8a;
+  --sx-tag: #ff9f7a;
+  --sx-attr: #c9bcff;
+  --sx-prop: #8fc7ff;
+  --font-ui: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+  --font-code: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --code-size: 16px;
+}
+* { box-sizing: border-box; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+body {
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.5;
+  margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 48px;
+}
+body::before {
+  content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px);
+  z-index: 10; background: var(--ink);
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+code { font-family: var(--font-code); font-size: .92em; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+.wrap { max-width: 1320px; margin: 0 auto; }
+
+/* Header */
+header {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--ink);
+  padding-block: 14px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.rec { width: 10px; height: 10px; border-radius: 50%; background: #ff5a4f; box-shadow: 0 0 0 4px rgba(255,90,79,.15); flex-shrink: 0; }
+.brand h1 { font-size: 16px; margin: 0; font-weight: 600; letter-spacing: .01em; white-space: nowrap; }
+.where-now { color: var(--muted); font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 200px; }
+.controls { display: flex; gap: 8px; align-items: center; margin-left: auto; flex-wrap: wrap; }
+.btn {
+  border: 1px solid var(--line); background: var(--panel); border-radius: 8px;
+  padding: 7px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 14px;
+}
+.btn:hover { background: var(--raised); }
+.btn.primary { background: var(--lamp); color: var(--lamp-ink); border-color: var(--lamp); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn[disabled] { opacity: .4; cursor: default; }
+kbd {
+  font-family: var(--font-code); font-size: 12px; line-height: 1;
+  padding: 3px 6px; border-radius: 5px; border: 1px solid var(--line);
+  border-bottom-width: 3px; background: var(--raised); color: var(--muted);
+}
+.btn.primary kbd { background: rgba(0,0,0,.12); border-color: rgba(0,0,0,.25); color: var(--lamp-ink); }
+.progress { height: 4px; background: var(--raised); border-radius: 4px; margin-top: 12px; overflow: hidden; }
+.progress i { display: block; height: 100%; width: 0; background: var(--lamp); transition: width .25s; }
+
+/* Step view */
+main { padding-block: 22px 0; }
+.step { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 28px; align-items: start; }
+.eyebrow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.eyebrow .chap { text-transform: uppercase; letter-spacing: .08em; font-weight: 600; color: var(--dusk); }
+.file {
+  font-family: var(--font-code); font-size: 13px; padding: 2px 8px; border-radius: 6px;
+  border: 1px solid currentColor; color: var(--f-js);
+}
+.file[data-file="index.html"] { color: var(--f-html); }
+.file[data-file="style.css"] { color: var(--f-css); }
+.file[data-file="wallpaper.js"] { color: var(--f-gl); }
+.long { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: var(--raised); color: var(--icing); font-weight: 600; }
+.step h2 { font-size: 28px; line-height: 1.2; margin: 8px 0 6px; text-wrap: balance; }
+.where { color: var(--text); font-size: 16px; margin: 0 0 14px; max-width: 72ch; }
+.where b { color: var(--lamp); font-weight: 600; }
+
+.code {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  overflow: hidden;
+}
+.ctx {
+  display: flex; gap: 12px; align-items: baseline; padding: 10px 16px;
+  background: var(--raised); border-bottom: 1px solid var(--line);
+  font-family: var(--font-code); font-size: calc(var(--code-size) * .8); color: var(--faint);
+  overflow-x: auto; white-space: pre;
+}
+.ctx.before { border-top: 1px solid var(--line); border-bottom: none; }
+.ctx .tag { font-family: var(--font-ui); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); flex-shrink: 0; }
+.ctx.replace .old { text-decoration: line-through; text-decoration-color: #ff5a4f; }
+.lines { display: flex; overflow-x: auto; }
+.gutter, .src {
+  margin: 0; padding: 16px 0; font-family: var(--font-code);
+  font-size: var(--code-size); line-height: 1.6; white-space: pre;
+}
+.gutter { padding-inline: 14px 12px; color: var(--faint); text-align: right; user-select: none; border-right: 1px solid var(--line); flex-shrink: 0; }
+.src { padding-inline: 16px 24px; color: var(--text); tab-size: 2; }
+.src code { font: inherit; }
+
+.side { display: grid; gap: 14px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 96px); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+.card h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.card p { margin: 0; }
+.shot { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 10px; margin-top: 10px; background: var(--term); border: 1px solid var(--line); }
+.run {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px;
+  padding: 10px 12px; border-radius: 8px; background: var(--term); border: 1px solid var(--line);
+}
+.run .tag { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ok); font-weight: 600; }
+.run .keys { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+.run .hint { flex-basis: 100%; }
+.meta-row { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; color: var(--muted); }
+.meta-row b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Intro and finish */
+.panel-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.stack { display: grid; gap: 16px; min-width: 0; }
+.stack > * { min-width: 0; }
+.intro h2 { font-size: 34px; line-height: 1.15; margin: 4px 0 10px; text-wrap: balance; max-width: 22ch; }
+.lede { color: var(--muted); font-size: 17px; max-width: 62ch; margin: 0; }
+.vtitle { font-family: var(--font-code); font-size: 15px; background: var(--panel); border: 1px dashed var(--line); padding: 10px 12px; border-radius: 8px; overflow-wrap: anywhere; }
+.vtitle + .vtitle { margin-top: 8px; }
+.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.checks li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; }
+.checks input { width: 18px; height: 18px; margin: 3px 0 0; accent-color: var(--lamp); }
+.checks label { cursor: pointer; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.table-wrap { overflow-x: auto; }
+.speed { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 10px 0 12px; }
+.speed input { width: 80px; font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--raised); color: var(--text); }
+.hint { color: var(--faint); font-size: 13px; }
+pre.plain { margin: 0; font-family: var(--font-code); font-size: 14px; line-height: 1.6; white-space: pre-wrap; color: var(--text); overflow-wrap: anywhere; }
+.copy-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.copy-row h3 { margin: 0; }
+.shots-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.shots-row figure { margin: 0; min-width: 0; }
+.shots-row figure:first-child { grid-column: 1 / -1; }
+.shots-row figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; }
+.shorts { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.shorts b { color: var(--icing); font-weight: 600; }
+
+/* Overview drawer */
+.overview { margin-top: 22px; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.overview .card h3 { color: var(--dusk); }
+.overview ol { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 2px; }
+.overview button {
+  width: 100%; text-align: left; background: none; border: none; padding: 5px 6px; border-radius: 6px; cursor: pointer;
+  display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 6px; font-size: 14px; color: var(--muted);
+}
+.overview button:hover { background: var(--raised); color: var(--text); }
+.overview button.current { background: var(--raised); color: var(--lamp); }
+.overview .n { font-variant-numeric: tabular-nums; color: var(--faint); }
+.overview .f { font-size: 12px; color: var(--ok); }
+
+/* Syntax colours: HTML, CSS and JavaScript */
+.token.comment { color: var(--sx-comment); font-style: italic; }
+.token.punctuation, .token.operator { color: var(--sx-punct); }
+.token.keyword, .token.atrule, .token.important { color: var(--sx-keyword); }
+.token.string, .token.template-string, .token.attr-value { color: var(--sx-string); }
+.token.number, .token.boolean, .token.unit { color: var(--sx-number); }
+.token.function { color: var(--sx-fn); }
+.token.tag { color: var(--sx-tag); }
+.token.attr-name, .token.selector, .token.class-name { color: var(--sx-attr); }
+.token.property, .token.entity { color: var(--sx-prop); }
+.token.interpolation .token.punctuation { color: var(--sx-keyword); }
+.token.template-string .token.string { color: var(--sx-string); }
+
+@media (max-width: 960px) {
+  .step, .panel-grid { grid-template-columns: minmax(0, 1fr); }
+  .side { position: static; }
+  .step h2 { font-size: 24px; }
+  .intro h2 { font-size: 28px; }
+  .where-now { flex-basis: 100%; order: 3; }
+  .controls { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .progress i { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="bar">
+      <div class="brand"><span class="rec" aria-hidden="true"></span><h1 id="series">Recording script</h1></div>
+      <div class="where-now" id="whereNow"></div>
+      <div class="controls">
+        <button class="btn" id="smaller" aria-label="Smaller code">A−</button>
+        <button class="btn" id="bigger" aria-label="Bigger code">A+</button>
+        <button class="btn" id="toggleList" aria-expanded="false">All steps</button>
+        <button class="btn" id="prev"><kbd>←</kbd> Back</button>
+        <button class="btn primary" id="next">Next <kbd>→</kbd></button>
+      </div>
+    </div>
+    <div class="progress" aria-hidden="true"><i id="progress"></i></div>
+  </header>
+  <main id="view" aria-live="polite"></main>
+  <section class="overview" id="overview" hidden></section>
+</div>
+
+<script type="application/json" id="steps-data">/*STEPS_DATA*/</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" data-manual></script>
+<script>
+(function () {
+  const data = JSON.parse(document.getElementById("steps-data").textContent);
+  const steps = data.steps;
+  const LAST = steps.length + 1; // 0 = before recording, 1..N = steps, N+1 = finish
+  const LONG = 30;               // steps with this many typed lines can run at 4x in the edit
+  const view = document.getElementById("view");
+  const overview = document.getElementById("overview");
+  const whereNow = document.getElementById("whereNow");
+  const prevBtn = document.getElementById("prev");
+  const nextBtn = document.getElementById("next");
+  const listBtn = document.getElementById("toggleList");
+  const progress = document.getElementById("progress");
+  document.getElementById("series").textContent = data.series;
+  const stepOf = (title) => steps.find((s) => s.title === title).n;
+
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  };
+
+  let current = clamp(Number(store.get("macscript.step", 0)) || 0);
+  let codeSize = store.get("macscript.size", 16);
+  let lpm = store.get("macscript.lpm", 8);
+  document.documentElement.style.setProperty("--code-size", codeSize + "px");
+
+  function clamp(n) { return Math.max(0, Math.min(LAST, n)); }
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function lang(file) { return file.endsWith(".html") ? "markup" : file.endsWith(".css") ? "css" : "javascript"; }
+  function highlight(code, file) {
+    const l = lang(file);
+    if (window.Prism && Prism.languages[l]) {
+      try { return Prism.highlight(code, Prism.languages[l], l); } catch (e) {}
+    }
+    return esc(code);
+  }
+  function fileBadge(f) { return `<span class="file" data-file="${esc(f)}">${esc(f)}</span>`; }
+  function minutes(lines) { return Math.max(1, Math.round(lines / Math.max(1, lpm))); }
+
+  function opLabel(s) {
+    return {
+      create: "Empty file",
+      append: "End of file",
+      insert_after_line: "Insert below a line",
+      insert_before_line: "Insert above a line",
+      replace_line: "Replace a line",
+    }[s.op] || "";
+  }
+
+  function codeBlock(s) {
+    const lines = s.code.split("\n");
+    const gutter = lines.map((_, i) => i + 1).join("\n");
+    const main = `<div class="lines"><pre class="gutter" aria-hidden="true">${gutter}</pre><pre class="src"><code>${highlight(s.code, s.file)}</code></pre></div>`;
+    const anchor = s.anchor ? highlight(s.anchor, s.file) : "";
+    if (s.op === "insert_after_line") {
+      return `<div class="code"><div class="ctx after"><span class="tag">After</span><span>${anchor}</span></div>${main}</div>`;
+    }
+    if (s.op === "insert_before_line") {
+      return `<div class="code">${main}<div class="ctx before"><span class="tag">Before</span><span>${anchor}</span></div></div>`;
+    }
+    if (s.op === "replace_line") {
+      return `<div class="code"><div class="ctx replace"><span class="tag">Replace</span><span class="old">${anchor}</span></div>${main}</div>`;
+    }
+    return `<div class="code">${main}</div>`;
+  }
+
+  function runBox(s) {
+    if (!s.run) return "";
+    return `<div class="run"><span class="tag">Run it</span>
+      <span class="keys"><kbd>⌘S</kbd> save <kbd>⌘Tab</kbd> Chrome <kbd>⌘R</kbd> reload</span>
+      <span class="hint">${esc(data.run)} Then ⌘Tab back to VS Code.</span></div>`;
+  }
+
+  function renderStep(s) {
+    const ch = data.chapters[s.chapterIndex];
+    const pos = ch.steps.indexOf(s.n) + 1;
+    view.innerHTML = `
+      <article class="step">
+        <div style="min-width:0">
+          <div class="eyebrow">
+            <span class="chap">Chapter ${s.chapterIndex + 1} · ${esc(s.chapter)}</span>
+            ${fileBadge(s.file)}
+            <span>${opLabel(s)}</span>
+            ${s.typed >= LONG ? `<span class="long">Long step: 4× in the edit</span>` : ""}
+          </div>
+          <h2>${s.n}. ${esc(s.title)}</h2>
+          <p class="where"><b>Where:</b> ${esc(s.where)}</p>
+          ${codeBlock(s)}
+        </div>
+        <aside class="side">
+          <div class="card">
+            <h3>${s.run ? "Chrome should show" : "What happens"}</h3>
+            <p>${esc(s.preview)}</p>
+            ${s.shot ? `<img class="shot" src="${s.shot}" alt="Expected desktop after step ${s.n}" loading="lazy" width="${data.shotSize[0]}" height="${data.shotSize[1]}">` : ""}
+            ${runBox(s)}
+          </div>
+          <div class="card">
+            <div class="meta-row"><span>Lines to type</span><b>${s.typed}</b></div>
+            <div class="meta-row"><span>Step in chapter</span><b>${pos} of ${ch.steps.length}</b></div>
+            <div class="meta-row"><span>At ${lpm} lines/min</span><b>~${minutes(s.typed)} min</b></div>
+          </div>
+        </aside>
+      </article>`;
+    whereNow.textContent = `Step ${s.n} of ${steps.length} · ${s.chapter}`;
+  }
+
+  function chapterRows() {
+    return data.chapters.map((c, i) => {
+      const typed = c.steps.reduce((a, n) => a + steps[n - 1].typed, 0);
+      return `<tr><td>${i + 1}. ${esc(c.name)}</td><td class="num">${c.steps.length}</td><td class="num">${typed}</td><td class="num">~${minutes(typed)}</td></tr>`;
+    }).join("");
+  }
+
+  function finalShots() {
+    return data.finalShots.map((f) => `<figure><img class="shot" src="${f.src}" alt="Finished desktop, ${esc(f.caption)}" loading="lazy" width="${data.shotSize[0]}" height="${data.shotSize[1]}"><figcaption>${esc(f.caption)}</figcaption></figure>`).join("");
+  }
+
+  const SETTINGS = `{
+  "editor.autoClosingBrackets": "never",
+  "editor.autoClosingQuotes": "never",
+  "editor.autoClosingComments": "never",
+  "editor.autoSurround": "never",
+  "html.autoClosingTags": false,
+  "html.autoCreateQuotes": false,
+  "editor.linkedEditing": false,
+  "editor.quickSuggestions": { "other": "off", "comments": "off", "strings": "off" },
+  "editor.suggestOnTriggerCharacters": false,
+  "editor.acceptSuggestionOnEnter": "off",
+  "emmet.showExpandedAbbreviation": "never",
+  "editor.formatOnSave": false,
+  "editor.formatOnType": false,
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.detectIndentation": false,
+  "files.insertFinalNewline": true
+}`;
+
+  function renderIntro() {
+    const typed = steps.reduce((a, s) => a + s.typed, 0);
+    const lines = Object.values(data.totals).reduce((a, t) => a + t.lines, 0);
+    const longSteps = steps.filter((s) => s.typed >= LONG).length;
+    const runs = steps.filter((s) => s.run).length;
+    const checks = [
+      "Make a folder called <code>macos-desktop</code> with four empty files in it: <code>index.html</code>, <code>style.css</code>, <code>wallpaper.js</code> and <code>script.js</code>.",
+      "Copy the <code>icons</code> folder from this project into it: 11 SVG files (seven app icons, a folder and three file icons). They are original artwork, safe to show and to share with the code.",
+      "Open the folder in VS Code with your Recording profile (dark theme, big font, AI suggestions off).",
+      "In that profile, paste the settings on the right into <code>settings.json</code>. They stop VS Code typing anything you didn't: no closing tags, brackets, quotes or pop-up suggestions.",
+      "VS Code indents for you after <code>{</code> and after an opening tag. Check each line's indent against the step; Backspace steps back out. Two spaces per level.",
+      "Off camera, drag <code>index.html</code> onto Chrome. Press ⌃⌘F for full screen, then ⇧⌘F to hide the toolbar, so it looks like a real Mac.",
+      `To run: <code>⌘S</code> in VS Code, <code>⌘Tab</code> to Chrome, <code>⌘R</code> to reload, <code>⌘Tab</code> back. The page is black until the wallpaper shader runs in step ${stepOf("Paint every frame, then the first run")}.`,
+      `In step ${stepOf("Live weather")}, put your own city in <code>CITY</code>. Find its latitude and longitude on Google Maps (right-click the map). The <code>°</code> sign is <code>⌥⇧8</code>.`,
+      `If you rehearsed, clear old notes before step ${stepOf("Notes that are saved")}: in Chrome, open DevTools off camera and run <code>localStorage.clear()</code>. Do it again before the final demo.`,
+      "To find the line a step mentions, press ⌘F in VS Code and type part of it.",
+      "Do Not Disturb on the Mac and the phone. Close chat and mail apps.",
+      "Phone on its stand 15–30 cm from the keyboard, recording WAV with noise reduction off.",
+      "Start the phone recording, then OBS. Wait 5 seconds in silence, tap one key sharply, then start typing.",
+      "Keep this page on the MacBook. Press → for the next step.",
+    ];
+    view.innerHTML = `
+      <section class="intro panel-grid">
+        <div class="stack">
+          <div>
+            <div class="eyebrow"><span class="chap">Before you record</span></div>
+            <h2>Type it, one visible change at a time.</h2>
+            <p class="lede">${steps.length} steps in ${data.chapters.length} chapters, in four files. Each step says where to type and what Chrome should show when you reload. Every step was run in Chrome with no errors, and the steps rebuild the finished files exactly.</p>
+          </div>
+          <div class="card">
+            <h3>Video title</h3>
+            <div class="vtitle">${esc(data.videoTitle)}</div>
+            <p class="hint" style="margin-top:8px">Two more to A/B test with YouTube's Test &amp; Compare:</p>
+            <div class="vtitle" style="margin-top:8px">ASMR Coding - I Built macOS in Chrome (Live Wallpaper, Dock, Spotlight) - No Talking</div>
+            <div class="vtitle">Building a Mac Desktop with Only HTML, CSS &amp; JavaScript - Keyboard ASMR</div>
+          </div>
+          <div class="card">
+            <h3>Checklist</h3>
+            <ul class="checks">${checks.map((c, i) => `<li><input type="checkbox" id="chk${i}"><label for="chk${i}">${c}</label></li>`).join("")}</ul>
+          </div>
+        </div>
+        <div class="stack">
+          <div class="card">
+            <h3>Plan your recording</h3>
+            <div class="speed"><label for="lpm">Your typing speed</label><input id="lpm" type="number" min="2" max="40" value="${lpm}"><span>lines / minute</span></div>
+            <p class="hint">8 is an example. CSS lines are short and quick; the shader in chapter 2 is slower. Type for 5 minutes and count your lines to get your real number. Blank lines are not counted.</p>
+            <div class="table-wrap"><table>
+              <thead><tr><th>Chapter</th><th class="num">Steps</th><th class="num">Lines</th><th class="num">Min</th></tr></thead>
+              <tbody>${chapterRows()}</tbody>
+              <tfoot><tr><th>Total typing</th><th class="num">${steps.length}</th><th class="num">${typed}</th><th class="num">~${minutes(typed)}</th></tr></tfoot>
+            </table></div>
+            <p class="hint" style="margin-top:8px">Files when done: ${lines} lines in four files. This is a long build: record one or two chapters per session. The ${longSteps} long steps (marked in pink) can run at 4× in the edit, with a "4×" label and real-time typing sound underneath. Play the ${runs} reloads in real time; they are the payoff.</p>
+            <p class="hint" style="margin-top:8px">Three bugs are planned and fixed on camera: a blurry wallpaper (step ${stepOf("Paint every frame, then the first run")}), temperatures with decimals (step ${stepOf("Live weather")}) and a second Finder window (step ${stepOf("Focus, close, minimise and drag")}).</p>
+          </div>
+          <div class="card">
+            <div class="copy-row"><h3>Recording profile: settings.json</h3><button class="btn" id="copySettings">Copy</button></div>
+            <pre class="plain">${esc(SETTINGS)}</pre>
+          </div>
+          <div class="card">
+            <h3>What you are building</h3>
+            <div class="shots-row">${finalShots()}</div>
+          </div>
+        </div>
+      </section>`;
+    whereNow.textContent = "Before you record";
+    const input = document.getElementById("lpm");
+    input.addEventListener("change", () => {
+      const v = Math.max(2, Math.min(40, Number(input.value) || 8));
+      lpm = v; store.set("macscript.lpm", v); render();
+    });
+    document.getElementById("copySettings").addEventListener("click", (e) => {
+      navigator.clipboard?.writeText(SETTINGS).then(() => { e.target.textContent = "Copied"; }, () => {});
+    });
+  }
+
+  function renderFinish() {
+    const names = ["Final result", ...data.chapters.map((c) => c.name), "Final demo"];
+    const chapterText = names.map((n, i) => (i === 0 ? "00:00 " : "--:-- ") + n).join("\n");
+    const desc = `Building a macOS desktop in the browser with plain HTML, CSS and JavaScript: a live WebGL shader wallpaper, frosted glass widgets with live weather, a magnifying dock, windows you can drag, minimise and close, Notes, Terminal, Calculator, Spotlight and a boot screen. No frameworks, no talking, just real keyboard sounds.
+
+Code: [GitHub link]
+Run it: open index.html in Chrome. Weather by Open-Meteo, icons by Lucide.
+
+${chapterText}
+
+Keyboard: [model], [switch name] switches. Audio: Samsung S25 Ultra.`;
+    view.innerHTML = `
+      <section class="intro panel-grid">
+        <div class="stack">
+          <div>
+            <div class="eyebrow"><span class="chap">Done typing</span></div>
+            <h2>Record the final demo, then stop.</h2>
+            <p class="lede">Clear old notes off camera, then reload Chrome in full screen. Let the boot screen play. Glide along the dock, open Notes and type a line, open Terminal and run <code>neofetch</code>, tap 12 × 7 = in Calculator, press ⌘K and type a sum, then right-click and Change Wallpaper through all four colours. Close the windows and let the waves drift for 20 to 30 seconds without touching anything. Wait 5 seconds in silence, then stop OBS and the phone. Put the clearest 5 to 10 seconds of this demo at the very start of the video.</p>
+          </div>
+          <div class="card">
+            <h3>Description and chapters</h3>
+            <pre class="plain">${esc(desc)}</pre>
+            <p class="hint" style="margin-top:10px">Replace each --:-- with the time the chapter starts in your edited video. The first chapter must be 00:00, and every chapter needs at least 10 seconds.</p>
+          </div>
+        </div>
+        <div class="stack">
+          <div class="card">
+            <h3>Final result</h3>
+            <div class="shots-row">${finalShots()}</div>
+          </div>
+          <div class="card">
+            <h3>Shorts and thumbnail</h3>
+            <ol class="shorts">
+              <li><b>Result loop, 15–30 s.</b> Boot screen, the widgets rise, the dock magnifies, the wallpaper fades from Sunset to Ocean. Show the build at 4× with a "4×" label, end on the same frame.</li>
+              <li><b>Shader reveal, 20–40 s.</b> Steps ${stepOf("Paint every frame, then the first run")} and ${stepOf("Bug 1: the wallpaper is blurry")} in real time: reload, blurry waves, add the resize lines, reload, razor-sharp silk.</li>
+              <li><b>Bug fix, 20–40 s.</b> Step ${stepOf("Bug 2: temperatures with decimals")}: 27.6°, add <code>Math.round</code>, reload, 28°.</li>
+              <li><b>Four wallpapers, 10–15 s.</b> Right-click, Change Wallpaper, four times, no cuts.</li>
+            </ol>
+            <p class="hint" style="margin-top:10px">Thumbnail: the desktop in Ocean or Sunset filling about 60% of the frame, the dock magnified and a window open, plus 2–4 big words such as "macOS IN CHROME" or "NO FRAMEWORKS", and your corner badge.</p>
+          </div>
+        </div>
+      </section>`;
+    whereNow.textContent = "Finish";
+  }
+
+  function renderOverview() {
+    overview.innerHTML = data.chapters.map((c, i) => `
+      <div class="card">
+        <h3>${i + 1}. ${esc(c.name)}</h3>
+        <ol>${c.steps.map((n) => {
+          const s = steps[n - 1];
+          return `<li><button data-go="${n}" class="${n === current ? "current" : ""}"><span class="n">${n}</span><span>${esc(s.title)}</span><span class="f">${s.run ? "run" : ""}</span></button></li>`;
+        }).join("")}</ol>
+      </div>`).join("");
+  }
+
+  function render() {
+    if (current === 0) renderIntro();
+    else if (current === LAST) renderFinish();
+    else renderStep(steps[current - 1]);
+    prevBtn.disabled = current === 0;
+    nextBtn.disabled = current === LAST;
+    nextBtn.firstChild.textContent = current === 0 ? "Start " : "Next ";
+    progress.style.width = (current / LAST) * 100 + "%";
+    if (!overview.hidden) renderOverview();
+    store.set("macscript.step", current);
+  }
+
+  function go(n) { current = clamp(n); render(); window.scrollTo({ top: 0 }); }
+
+  prevBtn.addEventListener("click", () => go(current - 1));
+  nextBtn.addEventListener("click", () => go(current + 1));
+  listBtn.addEventListener("click", () => {
+    overview.hidden = !overview.hidden;
+    listBtn.setAttribute("aria-expanded", String(!overview.hidden));
+    if (!overview.hidden) { renderOverview(); overview.scrollIntoView({ block: "start" }); }
+  });
+  overview.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-go]");
+    if (b) { overview.hidden = true; listBtn.setAttribute("aria-expanded", "false"); go(Number(b.dataset.go)); }
+  });
+  document.getElementById("smaller").addEventListener("click", () => setSize(codeSize - 1));
+  document.getElementById("bigger").addEventListener("click", () => setSize(codeSize + 1));
+  function setSize(v) {
+    codeSize = Math.max(12, Math.min(30, v));
+    document.documentElement.style.setProperty("--code-size", codeSize + "px");
+    store.set("macscript.size", codeSize);
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest("input, textarea")) return;
+    if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); go(current + 1); }
+    if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); go(current - 1); }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>macOS Desktop</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Live wallpaper, drawn by a shader in wallpaper.js -->
+  <canvas class="wallpaper" id="wallpaper"></canvas>
+
+  <!-- Menu bar -->
+  <header class="menubar">
+    <nav class="menus">
+      <button class="logo" data-menu="logo"><i data-lucide="command"></i></button>
+      <b id="appName">Finder</b>
+      <button data-menu="file">File</button>
+      <button data-menu="view">View</button>
+      <button data-menu="go">Go</button>
+      <button data-menu="help">Help</button>
+    </nav>
+    <div class="status">
+      <span><i data-lucide="wifi"></i><small id="speed"></small></span>
+      <span><small id="battery">100%</small><i class="battery"><b id="batteryLevel"></b></i></span>
+      <button id="searchButton"><i data-lucide="search"></i></button>
+      <span id="clock"></span>
+    </div>
+  </header>
+
+  <!-- Widgets -->
+  <main class="widgets">
+    <section class="glass weather">
+      <div class="now">
+        <div>
+          <h2><span id="city">Cupertino</span><i data-lucide="navigation"></i></h2>
+          <p class="temp" id="temp">--°</p>
+        </div>
+        <div class="sky">
+          <span id="skyIcon"><i data-lucide="cloud"></i></span>
+          <p id="skyText">Loading...</p>
+          <small id="highLow">H:--° L:--°</small>
+        </div>
+      </div>
+      <ul class="hours" id="hours"></ul>
+    </section>
+
+    <section class="glass cleaner" id="cleaner">
+      <div class="ring">
+        <svg viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="44"></circle>
+          <circle cx="50" cy="50" r="44" pathLength="100" id="ring"></circle>
+        </svg>
+        <i data-lucide="sparkles"></i>
+      </div>
+      <p id="cleanText">Tap to clean</p>
+    </section>
+
+    <section class="glass notes-widget" id="notesWidget">
+      <small class="label">Notepad</small>
+      <i data-lucide="file-text"></i>
+      <h3 id="noteTitle">No Notes</h3>
+      <p id="notePreview">Tap to create your first note...</p>
+      <footer>
+        <small class="label">Quick note</small>
+        <button id="quickNote"><i data-lucide="plus"></i></button>
+      </footer>
+    </section>
+  </main>
+
+  <!-- Notifications slide in here -->
+  <div class="toasts" id="toasts"></div>
+
+  <!-- The dock: script.js fills it with app icons -->
+  <nav class="dock glass" id="dock"></nav>
+
+  <!-- App windows open in here -->
+  <div id="windows"></div>
+
+  <!-- What goes inside each app window -->
+  <template id="finder-app">
+    <aside class="sidebar">
+      <small>Favourites</small>
+      <button><i data-lucide="clock"></i>Recents</button>
+      <button><i data-lucide="layout-grid"></i>Applications</button>
+      <button class="active"><i data-lucide="monitor"></i>Desktop</button>
+      <button><i data-lucide="file-text"></i>Documents</button>
+      <button><i data-lucide="circle-arrow-down"></i>Downloads</button>
+    </aside>
+    <div class="files">
+      <figure><img src="icons/folder.svg" alt=""><figcaption>Projects</figcaption></figure>
+      <figure><img src="icons/folder.svg" alt=""><figcaption>Screenshots</figcaption></figure>
+      <figure><img src="icons/folder.svg" alt=""><figcaption>Music</figcaption></figure>
+      <figure><img src="icons/html.svg" alt=""><figcaption>index.html</figcaption></figure>
+      <figure><img src="icons/css.svg" alt=""><figcaption>style.css</figcaption></figure>
+      <figure><img src="icons/js.svg" alt=""><figcaption>script.js</figcaption></figure>
+    </div>
+  </template>
+
+  <template id="notes-app">
+    <aside class="sidebar">
+      <button class="new-note"><i data-lucide="square-pen"></i>New Note</button>
+      <div class="note-list"></div>
+    </aside>
+    <textarea placeholder="Start typing..."></textarea>
+  </template>
+
+  <template id="terminal-app">
+    <div class="term-output"></div>
+    <label class="term-line">guest@macbook ~ % <input spellcheck="false"></label>
+  </template>
+
+  <template id="calculator-app">
+    <output class="screen">0</output>
+    <div class="keys">
+      <button class="fn" data-key="C">AC</button>
+      <button class="fn" data-key="N">&plusmn;</button>
+      <button class="fn" data-key="%">%</button>
+      <button class="op" data-key="/">&divide;</button>
+      <button data-key="7">7</button>
+      <button data-key="8">8</button>
+      <button data-key="9">9</button>
+      <button class="op" data-key="*">&times;</button>
+      <button data-key="4">4</button>
+      <button data-key="5">5</button>
+      <button data-key="6">6</button>
+      <button class="op" data-key="-">&minus;</button>
+      <button data-key="1">1</button>
+      <button data-key="2">2</button>
+      <button data-key="3">3</button>
+      <button class="op" data-key="+">+</button>
+      <button class="zero" data-key="0">0</button>
+      <button data-key=".">.</button>
+      <button class="op" data-key="=">=</button>
+    </div>
+  </template>
+
+  <template id="settings-app">
+    <div class="settings">
+      <h3>Wallpaper</h3>
+      <p>The shader repaints the desktop in a new colour.</p>
+      <div class="swatches"></div>
+    </div>
+  </template>
+
+  <template id="about-app">
+    <div class="about">
+      <div class="about-logo"><i data-lucide="command"></i></div>
+      <h2>macOS</h2>
+      <p>Web Edition 1.0</p>
+      <dl></dl>
+    </div>
+  </template>
+
+  <!-- Spotlight search -->
+  <div class="spotlight" id="spotlight" hidden>
+    <label class="search">
+      <i data-lucide="search"></i>
+      <input id="spotInput" placeholder="Spotlight Search" autocomplete="off" spellcheck="false">
+    </label>
+    <ul class="results" id="results"></ul>
+  </div>
+
+  <!-- Drop-down and right-click menus -->
+  <div class="menu" id="menu" hidden></div>
+
+  <!-- Boot screen: shows for 3 seconds when the page loads -->
+  <div class="boot">
+    <i data-lucide="command"></i>
+    <div class="loader"><span></span></div>
+  </div>
+
+  <script src="https://unpkg.com/lucide@1.48.0/dist/umd/lucide.min.js"></script>
+  <script src="wallpaper.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "macos-desktop-tools",
+  "private": true,
+  "description": "Builds and checks the recording script for the macOS desktop video.",
+  "type": "module",
+  "scripts": {
+    "icons": "python3 make_icons.py",
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "lucide": "1.48.0"
+  }
+}

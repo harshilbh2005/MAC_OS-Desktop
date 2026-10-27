@@ -409,7 +409,7 @@ pre.plain { margin: 0; font-family: var(--font-code); font-size: 14px; line-heig
           <div>
             <div class="eyebrow"><span class="chap">Before you record</span></div>
             <h2>Type it, one visible change at a time.</h2>
-            <p class="lede">${steps.length} steps in ${data.chapters.length} chapters, in four files. Each step says where to type and what Chrome should show when you reload. Every step was run in Chrome with no errors, and the steps rebuild the finished files exactly.</p>
+            <p class="lede">${steps.length} steps in ${data.chapters.length} chapters, in four files. Each step says where to type and what Chrome should show when you reload. Every run step was loaded in the browser with no errors, and the steps rebuild the finished files exactly.</p>
           </div>
           <div class="card">
             <h3>Video title</h3>
@@ -438,7 +438,7 @@ pre.plain { margin: 0; font-family: var(--font-code); font-size: 14px; line-heig
           </div>
           <div class="card">
             <div class="copy-row"><h3>Recording profile: settings.json</h3><button class="btn" id="copySettings">Copy</button></div>
-            <pre class="plain">${esc(SETTINGS)}</pre>
+            <pre class="plain" id="settingsText">${esc(SETTINGS)}</pre>
           </div>
           <div class="card">
             <h3>What you are building</h3>
@@ -453,7 +453,15 @@ pre.plain { margin: 0; font-family: var(--font-code); font-size: 14px; line-heig
       lpm = v; store.set("macscript.lpm", v); render();
     });
     document.getElementById("copySettings").addEventListener("click", (e) => {
-      navigator.clipboard?.writeText(SETTINGS).then(() => { e.target.textContent = "Copied"; }, () => {});
+      const selectIt = () => {
+        const range = document.createRange();
+        range.selectNodeContents(document.getElementById("settingsText"));
+        getSelection().removeAllRanges();
+        getSelection().addRange(range);
+        e.target.textContent = "Press ⌘C";
+      };
+      if (!navigator.clipboard) return selectIt();
+      navigator.clipboard.writeText(SETTINGS).then(() => { e.target.textContent = "Copied"; }, selectIt);
     });
   }
 

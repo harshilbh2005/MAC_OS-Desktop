@@ -160,7 +160,7 @@ dock.addEventListener("mousemove", (e) => {
     const box = icon.getBoundingClientRect();
     const distance = Math.abs(e.clientX - (box.left + box.width / 2));
     const grow = Math.max(0, 1 - distance / 200);
-    icon.style.setProperty("--size", 54 + 30 * grow + "px");
+    icon.style.setProperty("--size", 64 + 34 * grow + "px");
   }
 });
 

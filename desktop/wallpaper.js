@@ -1,53 +1,57 @@
-// Live wallpaper. A WebGL shader paints soft waves of silk, one pixel at a time,
-// sixty times a second. Each wave has a glowing edge and drops a shadow on the next.
+// Live wallpaper. A WebGL shader paints glowing ribbons of silk, one pixel at a time,
+// sixty times a second, in the style of the newest macOS wallpapers.
 
 const SHADER = `
 precision highp float;
 uniform vec2 size;
 uniform float time;
 
-// The colour of a wave, from the back (0.0) to the front (1.0)
+// The colour of a ribbon, from the back (0.0) to the front (1.0)
 vec3 tint(float k) {
-  vec3 plum = vec3(0.22, 0.04, 0.22);
-  vec3 berry = vec3(0.70, 0.08, 0.24);
-  vec3 red = vec3(0.93, 0.26, 0.10);
-  vec3 orange = vec3(1.00, 0.56, 0.16);
-  if (k < 0.33) return mix(plum, berry, k / 0.33);
-  if (k < 0.66) return mix(berry, red, (k - 0.33) / 0.33);
-  return mix(red, orange, (k - 0.66) / 0.34);
+  vec3 indigo = vec3(0.32, 0.30, 0.95);
+  vec3 blue = vec3(0.10, 0.42, 1.00);
+  vec3 cyan = vec3(0.35, 0.85, 1.00);
+  vec3 navy = vec3(0.05, 0.12, 0.45);
+  if (k < 0.33) return mix(indigo, blue, k / 0.33);
+  if (k < 0.66) return mix(blue, cyan, (k - 0.33) / 0.33);
+  return mix(cyan, navy, (k - 0.66) / 0.34);
 }
 
 void main() {
   vec2 uv = gl_FragCoord.xy / size;   // 0,0 is bottom left, 1,1 is top right
   float x = uv.x * size.x / size.y;
-  float t = time * 0.06;
+  float t = time * 0.05;
 
-  // The night sky behind the waves
-  vec3 color = mix(vec3(0.02, 0.05, 0.16), vec3(0.16, 0.03, 0.14), uv.x * 0.6 + (1.0 - uv.y) * 0.5);
+  // The dark night behind the ribbons
+  vec3 color = mix(vec3(0.0, 0.01, 0.05), vec3(0.01, 0.04, 0.14), uv.y);
 
-  for (int i = 0; i < 7; i++) {
+  for (int i = 0; i < 6; i++) {
     float n = float(i);
-    float k = n / 6.0;
+    float k = n / 5.0;
 
-    // Where the top edge of this wave is
-    float edge = 1.0 - k * 0.66 + 0.14 * (x - 0.8)
-      + 0.13 * sin(x * (1.3 + k * 0.6) + n * 1.7 + t * (1.0 + k))
-      + 0.05 * sin(x * 3.3 - n * 2.1 - t * 1.3);
-    float d = edge - uv.y;   // more than 0 means we are inside the wave
+    // Where the top edge of this ribbon is
+    float edge = 0.78 - k * 0.42 + 0.22 * (x - 0.8) * (1.0 - k * 0.4)
+      + 0.10 * sin(x * (1.6 + k * 0.5) + n * 2.1 + t * (1.0 + k))
+      + 0.03 * sin(x * 4.0 - n * 1.3 - t * 1.7);
+    float d = edge - uv.y;   // more than 0 means we are inside the ribbon
 
-    // A soft shadow on the waves behind it
-    float shadow = (1.0 - smoothstep(0.0, 0.2, -d)) * step(d, 0.0);
-    color = mix(color, vec3(0.12, 0.0, 0.08), 0.6 * shadow);
+    // A soft shadow on the ribbons behind it
+    float shadow = (1.0 - smoothstep(0.0, 0.25, -d)) * step(d, 0.0);
+    color *= 1.0 - 0.45 * shadow;
 
-    // The wave: bright along its edge, darker deeper in, lit from the left
-    vec3 wave = tint(k) * (0.5 + 0.5 * exp(-d * 3.0)) * (0.8 + 0.35 * (1.0 - uv.x));
-    wave += vec3(1.0, 0.78, 0.45) * 0.45 * exp(-d * 45.0);
-    color = mix(color, wave, smoothstep(0.0, 0.002, d));
+    // The ribbon: see-through silk with a bright line of light along its edge
+    vec3 c = tint(k);
+    vec3 silk = c * 0.55 * exp(-d * 4.5) + c * 0.08;
+    silk += mix(c, vec3(1.0), 0.6) * 0.9 * exp(-d * 90.0);
+    color = mix(color, silk + color * 0.25, smoothstep(0.0, 0.002, d));
+
+    // A faint glow around the edge
+    color += c * 0.12 * exp(-abs(d) * 30.0);
   }
 
   // Darker corners and a little film grain
-  color *= 1.0 - 0.35 * length(uv - 0.5);
-  color += (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * 0.03;
+  color *= 1.0 - 0.3 * length(uv - vec2(0.5, 0.6));
+  color += (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * 0.025;
   gl_FragColor = vec4(color, 1.0);
 }`;
 

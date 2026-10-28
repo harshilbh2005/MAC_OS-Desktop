@@ -7,8 +7,9 @@ plus a step-by-step recording script for an ASMR programming video.
 
 ## What's inside
 
-- **Live wallpaper**: a WebGL shader paints seven waves of silk with glowing edges, soft
-  shadows and film grain. Four colours: Sunset, Ocean, Forest and Lilac.
+- **Live wallpaper**: a WebGL shader paints see-through ribbons of light with glowing
+  edges, soft shadows and film grain, in the style of the newest macOS wallpapers. Four
+  colours: Midnight, Lilac, Sunset and Aurora.
 - **Menu bar**: working menus, the active app's name, your real Wi-Fi speed and battery
   level, Spotlight and a live clock.
 - **Frosted glass widgets**: live weather for your city (Open-Meteo, no API key), a cleaner

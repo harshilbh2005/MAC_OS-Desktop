@@ -438,10 +438,10 @@ SETUP.calculator = function (win) {
 // ---- Settings: wallpapers ----
 
 const WALLPAPERS = [
-  { name: "Sunset", hue: 0 },
-  { name: "Ocean", hue: 200 },
-  { name: "Forest", hue: 105 },
-  { name: "Lilac", hue: 245 },
+  { name: "Midnight", hue: 0 },
+  { name: "Lilac", hue: 55 },
+  { name: "Sunset", hue: 165 },
+  { name: "Aurora", hue: 290 },
 ];
 let wallpaper = 0;
 

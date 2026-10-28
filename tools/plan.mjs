@@ -105,13 +105,13 @@ export const CHAPTERS = [
     name: "Live wallpaper",
     steps: [
       {
-        title: "The shader: colours of the waves",
+        title: "The shader: colours of the ribbons",
         ...createFile(gl, gl.lines[0], "void main() {"),
         where: "Empty file. The shader is a program for the graphics card, written in GLSL and kept in a JavaScript string. The backtick on the SHADER line opens that string.",
         preview: "Nothing to run yet.",
       },
       {
-        title: "The shader: seven waves of silk",
+        title: "The shader: six ribbons of light",
         ...appendTo(gl, "void main() {", "const canvas = document.getElementById(\"wallpaper\");"),
         where: atEnd("wallpaper.js") + " It runs once for every pixel. The last line closes the string with a backtick.",
         preview: "Nothing to run yet.",
@@ -126,7 +126,7 @@ export const CHAPTERS = [
         title: "Paint every frame, then the first run",
         file: "wallpaper.js", op: "append", code: BUGGY_PAINT,
         where: atEnd("wallpaper.js") + " Type it exactly like this. It hides bug 1, which you fix in the next step.",
-        preview: "Orange and purple waves glow and drift very slowly. Bug 1: they look blurry and blocky. The canvas never got a size, so the browser stretches its default 300 × 150 pixels over the whole screen.",
+        preview: "Deep blue ribbons of light drift very slowly across a dark sky. Bug 1: they look blurry and blocky. The canvas never got a size, so the browser stretches its default 300 × 150 pixels over the whole screen.",
         run: true, actions: [RELOAD_WAIT],
       },
       {
@@ -135,7 +135,7 @@ export const CHAPTERS = [
         anchor: "  gl.uniform2f(sizeSlot, canvas.width, canvas.height);",
         code: gl.slice("  const width = Math.round(innerWidth * devicePixelRatio);", "  gl.uniform1f(timeSlot, ms / 1000);"),
         where: "In paint(), replace the gl.uniform2f line. Now the canvas matches the window, pixel for pixel, even on a Retina screen.",
-        preview: "Sharp, smooth waves with a soft glow on every edge and a fine film grain. Resize the window: it stays sharp.",
+        preview: "Sharp, see-through ribbons with a bright line of light along every edge and a fine film grain, like the newest macOS wallpapers. Resize the window: it stays sharp.",
         run: true, actions: [RELOAD_WAIT],
       },
     ],
@@ -165,7 +165,7 @@ export const CHAPTERS = [
         title: "The clock and the icons",
         ...createFile(js, js.lines[0], "// Wi-Fi speed and battery level, straight from the browser"),
         where: "Empty file. $ is a short name for document.getElementById.",
-        preview: "A see-through menu bar over the waves: the ⌘ logo, Finder, File, View, Go and Help on the left, Wi-Fi, a full battery, search and the live date and time on the right.",
+        preview: "A see-through menu bar over the ribbons: the ⌘ logo, Finder, File, View, Go and Help on the left, Wi-Fi, a full battery, search and the live date and time on the right.",
         run: true, actions: [RELOAD_WAIT],
       },
       {
@@ -203,7 +203,7 @@ export const CHAPTERS = [
         title: "Weather widget styles",
         ...appendTo(css, ".now {", "/* Weather icons in colour, like Apple's */"),
         where: atEnd("style.css"),
-        preview: "A frosted glass card floats over the waves: Cupertino, --°, a cloud and Loading... The wallpaper glows through it.",
+        preview: "A frosted glass card floats over the ribbons: Cupertino, --°, a cloud and Loading... The wallpaper glows through it.",
         run: true, actions: [RELOAD_WAIT],
       },
       {
@@ -275,7 +275,7 @@ export const CHAPTERS = [
         title: "Notifications and the cleaner",
         ...appendTo(js, "// ---- Notifications ----", "// ---- Dock ----"),
         where: atEnd("script.js"),
-        preview: "Click the cleaner: a rainbow glow spins inside the ring while it fills up and counts to 100%. Then a notification slides in from the right: All clean.",
+        preview: "Click the cleaner: a soft white light pulses inside the ring while it fills up and counts to 100%. Then a notification slides in from the right: All clean.",
         run: true, actions: [RELOAD_WAIT, "click #cleaner", "wait 1400"],
       },
     ],
@@ -478,9 +478,9 @@ export const CHAPTERS = [
         title: "Wallpaper colours",
         ...appendTo(js, "// ---- Settings: wallpapers ----", "// ---- Spotlight (Cmd+K) ----"),
         where: atEnd("script.js"),
-        preview: "Open System Settings from the dock and pick Ocean: the whole desktop fades from sunset to deep blue in a second and a half, glass and all.",
+        preview: "Open System Settings from the dock and pick Aurora: the whole desktop fades from midnight blue to green in a second and a half, glass and all.",
         run: true,
-        actions: [RELOAD_WAIT, "click .app[data-app=settings]", "wait 500", "click .swatch:nth-child(2)", "wait 1900"],
+        actions: [RELOAD_WAIT, "click .app[data-app=settings]", "wait 500", "click .swatch:nth-child(4)", "wait 1900"],
       },
     ],
   },
@@ -564,7 +564,7 @@ export const FINAL_SHOTS = [
       "click .keys [data-key='4']", "wait 300"],
   },
   {
-    caption: "Ocean wallpaper",
-    actions: ["wait 4500", "eval setWallpaper(1)", "wait 1800", "click .app[data-app=finder]", "wait 700"],
+    caption: "Aurora wallpaper",
+    actions: ["wait 4500", "eval setWallpaper(3)", "wait 1800", "click .app[data-app=finder]", "wait 700"],
   },
 ];
